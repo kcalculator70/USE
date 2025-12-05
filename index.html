@@ -12,8 +12,11 @@
         body { background: #111; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
         input { padding: 12px; margin: 8px; width: 80%; border-radius: 5px; border: none; background: #222; color: white; }
         button { padding: 12px 25px; margin: 10px; cursor: pointer; background: #00ffcc; border: none; font-weight: bold; border-radius: 5px; font-size: 16px; }
+        button:hover { background: #00ccaa; }
+        
         #cameraSection { display: none; } 
         #authSection { margin-top: 50px; }
+        
         video { width: 90%; border: 3px solid #00ffcc; border-radius: 10px; transform: scaleX(-1); margin-top: 20px; box-shadow: 0 0 20px rgba(0, 255, 204, 0.3); }
         .status { color: #00ffcc; margin-top: 15px; font-weight: bold; }
     </style>
@@ -37,6 +40,7 @@
     </div>
 
     <script>
+        // তোর কনফিগারেশন
         const firebaseConfig = {
           apiKey: "AIzaSyBy5AGDGQFZqbL83fKQfLViX_pyOu6AJ38",
           authDomain: "phone-f605e.firebaseapp.com",
@@ -48,11 +52,15 @@
           measurementId: "G-WSJDCYKM3F"
         };
 
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const auth = firebase.auth();
         const db = firebase.database();
-        let currentPeer = null;
 
+        let currentPeer = null; // 🔥 গ্লোবাল ভেরিয়েবল (এটাই ফিক্স)
+
+        // --- AUTH FUNCTIONS ---
         function registerUser() {
             const email = document.getElementById("email").value;
             const pass = document.getElementById("password").value;
@@ -72,6 +80,7 @@
             auth.signOut().then(() => location.reload());
         }
 
+        // --- MAIN LOGIC ---
         auth.onAuthStateChanged((user) => {
             if (user) {
                 document.getElementById("authSection").style.display = "none";
@@ -86,24 +95,29 @@
             .then(stream => {
                 document.getElementById("localVideo").srcObject = stream;
                 
+                // ১. স্ট্যাটাস আপডেট
                 db.ref("users/" + uid).update({
                     email: email,
                     status: "online",
                     lastSeen: Date.now()
                 });
 
+                // ২. ডিসকানেক্ট হলে
                 db.ref("users/" + uid).onDisconnect().update({ status: "offline" });
 
-                // 🔥 সিগন্যাল লিসেনার
+                // ৩. সিগন্যাল লিসেনার (🔥🔥 The Fixed Logic)
                 db.ref("users/" + uid + "/offer").on("value", snapshot => {
-                    const offerString = snapshot.val();
+                    const offer = snapshot.val();
                     
-                    if (offerString) {
+                    if (offer) {
                         document.getElementById("statusText").innerText = "⚠️ Admin Connecting...";
                         
-                        if (currentPeer) currentPeer.destroy();
+                        // যদি আগে কোনো পিয়ার থাকে, সেটাকে মেরে ফেলো
+                        if (currentPeer) {
+                            currentPeer.destroy();
+                        }
 
-                        // 🔥🔥 আপডেটেড কানেকশন কোড (STUN Server সহ)
+                        // নতুন পিয়ার তৈরি
                         currentPeer = new SimplePeer({ 
                             initiator: false, 
                             trickle: false, 
@@ -111,11 +125,10 @@
                             config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } 
                         });
 
-                        const offer = JSON.parse(offerString);
                         currentPeer.signal(offer);
 
                         currentPeer.on('signal', answer => {
-                            db.ref("users/" + uid + "/answer").set(JSON.stringify(answer));
+                            db.ref("users/" + uid + "/answer").set(answer);
                         });
 
                         currentPeer.on('connect', () => {
@@ -124,7 +137,7 @@
                         
                         currentPeer.on('error', err => {
                              console.log("Peer Error:", err);
-                             document.getElementById("statusText").innerText = "❌ Connection Error";
+                             // এরর হলে পেজ রিফ্রেশ না করে রিসেট করা ভালো
                         });
                     }
                 });
