@@ -3,138 +3,428 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure User App</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
+    <title>Video Chat Pro - Hacker Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background: #111; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
-        input { padding: 12px; margin: 8px; width: 80%; border-radius: 5px; border: none; background: #222; color: white; }
-        button { padding: 12px 25px; margin: 10px; cursor: pointer; background: #00ffcc; border: none; font-weight: bold; border-radius: 5px; font-size: 16px; }
-        
-        #cameraSection { display: none; } 
-        #authSection { margin-top: 50px; }
-        
-        video { width: 90%; border: 3px solid #00ffcc; border-radius: 10px; transform: scaleX(-1); margin-top: 20px; box-shadow: 0 0 20px rgba(0, 255, 204, 0.3); }
-        .status { color: #00ffcc; margin-top: 15px; font-weight: bold; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Courier New', Courier, monospace; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        video { transform: scaleX(-1); object-fit: cover; border-radius: 12px; }
+        .btn-hacker { @apply bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 shadow-[0_0_10px_rgba(34,197,94,0.5)]; }
+        .input-hacker { @apply w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:outline-none focus:border-green-500 transition-colors; }
+        /* Hide scrollbar */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
     </style>
 </head>
-<body>
+<body class="h-screen flex flex-col overflow-hidden">
 
-    <div id="authSection">
-        <h2 style="color: #00ffcc;">🔐 Secure Login</h2>
-        <input type="email" id="email" placeholder="Email Address"><br>
-        <input type="password" id="password" placeholder="Password"><br>
-        <button onclick="loginUser()">Login</button>
-        <button onclick="registerUser()" style="background: #444;">Register</button>
-        <p id="authMsg" style="color: red; margin-top: 10px;"></p>
+    <!-- Navbar -->
+    <nav class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900 z-10">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-video text-green-500 text-xl"></i>
+            <h1 class="text-xl font-bold tracking-wider">SECURE LINK</h1>
+        </div>
+        <button id="logoutBtn" class="hidden text-sm text-red-400 hover:text-red-300">LOGOUT</button>
+    </nav>
+
+    <!-- Auth Container -->
+    <div id="authContainer" class="flex-1 flex items-center justify-center p-4">
+        <div class="glass p-8 rounded-2xl w-full max-w-md shadow-2xl">
+            <h2 class="text-2xl font-bold mb-6 text-center text-green-400">ACCESS TERMINAL</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">EMAIL</label>
+                    <input type="email" id="emailInput" class="input-hacker" placeholder="user@secure.net">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">PASSWORD</label>
+                    <input type="password" id="passInput" class="input-hacker" placeholder="••••••••">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button id="loginBtn" class="flex-1 btn-hacker">LOGIN</button>
+                    <button id="registerBtn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded transition">REGISTER</button>
+                </div>
+                <p id="authError" class="text-red-500 text-xs text-center h-4"></p>
+            </div>
+        </div>
     </div>
 
-    <div id="cameraSection">
-        <h3>User: <span id="userIdDisplay" style="color: #00ffcc;">...</span></h3>
-        <video id="localVideo" autoplay playsinline muted></video>
-        <div class="status" id="statusText">🟢 System Active (Low Res Mode)</div>
-        <button onclick="logout()" style="background: red; color: white; margin-top: 20px;">Logout</button>
+    <!-- App Container (Hidden initially) -->
+    <div id="appContainer" class="hidden flex-1 flex flex-col relative">
+        
+        <!-- Video Area -->
+        <div class="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+            <!-- Remote Video (Full Screen) -->
+            <video id="remoteVideo" autoplay playsinline class="w-full h-full absolute inset-0 bg-slate-900"></video>
+            
+            <!-- Local Video (Picture in Picture) -->
+            <div class="absolute top-4 right-4 w-32 h-48 md:w-48 md:h-72 bg-slate-800 rounded-xl overflow-hidden shadow-lg border border-slate-600 z-10 transition-all hover:scale-105">
+                <video id="localVideo" autoplay playsinline muted class="w-full h-full bg-black"></video>
+                <div class="absolute bottom-1 left-0 w-full text-center text-[10px] bg-black/50 text-white">YOU</div>
+            </div>
+
+            <!-- Call Controls Overlay -->
+            <div id="callControls" class="hidden absolute bottom-8 left-0 w-full flex justify-center gap-6 z-20">
+                <button id="toggleMic" class="p-4 rounded-full bg-slate-700 hover:bg-slate-600 text-white shadow-lg"><i class="fas fa-microphone"></i></button>
+                <button id="hangupBtn" class="p-4 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-[0_0_15px_rgba(220,38,38,0.6)] transform hover:scale-110 transition"><i class="fas fa-phone-slash"></i></button>
+                <button id="toggleCam" class="p-4 rounded-full bg-slate-700 hover:bg-slate-600 text-white shadow-lg"><i class="fas fa-video"></i></button>
+            </div>
+
+            <!-- Waiting Message -->
+            <div id="waitingMsg" class="hidden absolute inset-0 flex items-center justify-center bg-black/80 z-10">
+                <div class="text-center animate-pulse">
+                    <i class="fas fa-circle-notch fa-spin text-4xl text-green-500 mb-4"></i>
+                    <p class="text-green-400">ESTABLISHING UPLINK...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard / Dial Pad -->
+        <div id="dashboard" class="bg-slate-900 p-4 border-t border-slate-700 rounded-t-2xl absolute bottom-0 w-full transition-transform duration-300 z-30">
+            <div class="max-w-3xl mx-auto">
+                <!-- My ID Display -->
+                <div class="flex items-center justify-between bg-slate-800 p-3 rounded-lg mb-4 border border-slate-600">
+                    <div>
+                        <p class="text-[10px] text-slate-400">YOUR SECURE ID</p>
+                        <p id="myIdDisplay" class="font-mono text-green-400 text-sm truncate w-48 md:w-auto">Loading...</p>
+                    </div>
+                    <button id="copyBtn" class="text-slate-400 hover:text-white"><i class="far fa-copy"></i></button>
+                </div>
+
+                <!-- Call Input -->
+                <div class="flex gap-2">
+                    <input type="text" id="peerIdInput" placeholder="Enter Target ID to Call" class="flex-1 bg-slate-800 border border-slate-600 rounded px-4 text-white focus:outline-none focus:border-green-500">
+                    <button id="callBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded shadow-[0_0_10px_rgba(34,197,94,0.4)]">
+                        <i class="fas fa-phone"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Incoming Call Modal -->
+        <div id="incomingModal" class="hidden absolute inset-0 z-50 bg-black/90 flex items-center justify-center backdrop-blur-sm">
+            <div class="bg-slate-800 p-6 rounded-2xl border border-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.2)] text-center w-80">
+                <div class="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                    <i class="fas fa-phone-volume text-2xl text-green-400"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-1">INCOMING CALL</h3>
+                <p class="text-xs text-slate-400 mb-6 font-mono" id="callerIdDisplay">UNKNOWN SOURCE</p>
+                <div class="flex gap-4 justify-center">
+                    <button id="rejectBtn" class="bg-red-600 hover:bg-red-700 text-white w-12 h-12 rounded-full"><i class="fas fa-times"></i></button>
+                    <button id="answerBtn" class="bg-green-600 hover:bg-green-700 text-white w-12 h-12 rounded-full shadow-[0_0_15px_rgba(34,197,94,0.6)]"><i class="fas fa-check"></i></button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <script>
+    <!-- Logic Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, set, onValue, push, child, get, remove, onChildAdded } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // 1. Firebase Configuration (User Provided)
         const firebaseConfig = {
-          apiKey: "AIzaSyBy5AGDGQFZqbL83fKQfLViX_pyOu6AJ38",
-          authDomain: "phone-f605e.firebaseapp.com",
-          databaseURL: "https://phone-f605e-default-rtdb.firebaseio.com",
-          projectId: "phone-f605e",
-          storageBucket: "phone-f605e.firebasestorage.app",
-          messagingSenderId: "902490805880",
-          appId: "1:902490805880:web:98a5ed1432a0e3538e3f8d",
-          measurementId: "G-WSJDCYKM3F"
+            apiKey: "AIzaSyBy5AGDGQFZqbL83fKQfLViX_pyOu6AJ38",
+            authDomain: "phone-f605e.firebaseapp.com",
+            databaseURL: "https://phone-f605e-default-rtdb.firebaseio.com",
+            projectId: "phone-f605e",
+            storageBucket: "phone-f605e.firebasestorage.app",
+            messagingSenderId: "902490805880",
+            appId: "1:902490805880:web:3a2f31542674bc508e3f8d",
+            measurementId: "G-LM88X7BV39"
         };
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const auth = firebase.auth();
-        const db = firebase.database();
-        let currentPeer = null;
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
 
-        function registerUser() {
-            const email = document.getElementById("email").value;
-            const pass = document.getElementById("password").value;
-            auth.createUserWithEmailAndPassword(email, pass)
-                .then(() => alert("Account Created! Login now."))
-                .catch((e) => document.getElementById("authMsg").innerText = e.message);
-        }
+        // State Variables
+        let localStream;
+        let remoteStream;
+        let peerConnection;
+        let currentUser = null;
+        let currentCallId = null;
+        let isCaller = false;
 
-        function loginUser() {
-            const email = document.getElementById("email").value;
-            const pass = document.getElementById("password").value;
-            auth.signInWithEmailAndPassword(email, pass)
-                .catch((e) => document.getElementById("authMsg").innerText = e.message);
-        }
+        // WebRTC Config (Using Google's Free STUN servers)
+        const servers = {
+            iceServers: [
+                { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }
+            ]
+        };
 
-        function logout() {
-            auth.signOut().then(() => location.reload());
-        }
+        // DOM Elements
+        const authContainer = document.getElementById('authContainer');
+        const appContainer = document.getElementById('appContainer');
+        const emailInput = document.getElementById('emailInput');
+        const passInput = document.getElementById('passInput');
+        const authError = document.getElementById('authError');
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const myIdDisplay = document.getElementById('myIdDisplay');
+        const dashboard = document.getElementById('dashboard');
+        const callControls = document.getElementById('callControls');
+        const incomingModal = document.getElementById('incomingModal');
+        const waitingMsg = document.getElementById('waitingMsg');
 
-        auth.onAuthStateChanged((user) => {
+        // --- AUTH FUNCTIONS ---
+
+        onAuthStateChanged(auth, (user) => {
             if (user) {
-                document.getElementById("authSection").style.display = "none";
-                document.getElementById("cameraSection").style.display = "block";
-                document.getElementById("userIdDisplay").innerText = user.email.split('@')[0];
-                startCameraSystem(user.uid, user.email);
+                currentUser = user;
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                document.getElementById('logoutBtn').classList.remove('hidden');
+                myIdDisplay.textContent = user.uid;
+                initializeCallListeners();
+            } else {
+                currentUser = null;
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+                document.getElementById('logoutBtn').classList.add('hidden');
             }
         });
 
-        function startCameraSystem(uid, email) {
-            // 🔥 লো-কোয়ালিটি কনফিগারেশন (ব্যান্ডউইথ বাঁচাবে + ফাস্ট হবে)
-            const constraints = {
-                audio: true,
-                video: {
-                    facingMode: "user",
-                    width: { ideal: 320 },  // কোয়ালিটি কমানো হয়েছে
-                    height: { ideal: 240 }, // কোয়ালিটি কমানো হয়েছে
-                    frameRate: { ideal: 15 } // ১৫ এফপিএস (যথেষ্ট স্মুথ)
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            try {
+                await signInWithEmailAndPassword(auth, emailInput.value, passInput.value);
+            } catch (error) { authError.textContent = error.message; }
+        });
+
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            try {
+                await createUserWithEmailAndPassword(auth, emailInput.value, passInput.value);
+            } catch (error) { authError.textContent = error.message; }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            navigator.clipboard.writeText(currentUser.uid);
+            alert("ID Copied to Clipboard!");
+        });
+
+        // --- WEBRTC & CALL FUNCTIONS ---
+
+        async function startLocalVideo() {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localVideo.srcObject = localStream;
+            remoteStream = new MediaStream();
+            remoteVideo.srcObject = remoteStream;
+            
+            // UI Update
+            dashboard.classList.add('translate-y-full'); // Hide dial pad
+            callControls.classList.remove('hidden');
+        }
+
+        async function createPeerConnection(callId) {
+            peerConnection = new RTCPeerConnection(servers);
+
+            // Add local tracks to peer connection
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+
+            // Listen for remote tracks
+            peerConnection.ontrack = (event) => {
+                event.streams[0].getTracks().forEach(track => {
+                    remoteStream.addTrack(track);
+                });
+            };
+
+            // ICE Candidates logic
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    // Send candidate to DB
+                    const candidateRef = push(ref(db, `calls/${callId}/${isCaller ? 'callerCandidates' : 'calleeCandidates'}`));
+                    set(candidateRef, event.candidate.toJSON());
                 }
             };
 
-            navigator.mediaDevices.getUserMedia(constraints)
-            .then(stream => {
-                document.getElementById("localVideo").srcObject = stream;
-                
-                db.ref("users/" + uid).update({
-                    email: email,
-                    status: "online",
-                    lastSeen: Date.now()
-                });
-                db.ref("users/" + uid).onDisconnect().update({ status: "offline" });
-
-                db.ref("users/" + uid + "/offer").on("value", snapshot => {
-                    const offer = snapshot.val();
-                    if (offer) {
-                        document.getElementById("statusText").innerText = "⚠️ Admin Connecting...";
-                        if (currentPeer) currentPeer.destroy();
-
-                        currentPeer = new SimplePeer({ 
-                            initiator: false, 
-                            trickle: false, 
-                            stream: stream,
-                            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } 
-                        });
-
-                        currentPeer.signal(offer);
-
-                        currentPeer.on('signal', answer => {
-                            db.ref("users/" + uid + "/answer").set(answer);
-                        });
-
-                        currentPeer.on('connect', () => {
-                             document.getElementById("statusText").innerText = "🔴 LIVE WITH ADMIN";
-                        });
-                    }
-                });
-            })
-            .catch(err => alert("Camera Error: " + err));
+            return peerConnection;
         }
+
+        // --- INITIATE CALL (CALLER SIDE) ---
+        document.getElementById('callBtn').addEventListener('click', async () => {
+            const targetId = document.getElementById('peerIdInput').value.trim();
+            if (!targetId || targetId === currentUser.uid) return alert("Invalid ID");
+
+            isCaller = true;
+            currentCallId = generateCallId(currentUser.uid, targetId); // Simple unique ID for the session
+
+            await startLocalVideo();
+            const pc = await createPeerConnection(currentCallId);
+
+            // Create Offer
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            // Save call data to DB so Receiver can see it
+            const callRef = ref(db, `calls/${currentCallId}`);
+            await set(callRef, {
+                callerId: currentUser.uid,
+                receiverId: targetId,
+                offer: { type: offer.type, sdp: offer.sdp },
+                status: 'calling'
+            });
+
+            // Notify Receiver specifically
+            const receiverNotifyRef = ref(db, `notifications/${targetId}`);
+            set(receiverNotifyRef, {
+                callerId: currentUser.uid,
+                callSessionId: currentCallId,
+                timestamp: Date.now()
+            });
+
+            waitingMsg.classList.remove('hidden');
+            listenForAnswer(currentCallId);
+        });
+
+        function listenForAnswer(callId) {
+            onValue(ref(db, `calls/${callId}`), (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return; // Call ended or invalid
+
+                if (data.answer && !peerConnection.currentRemoteDescription) {
+                    const answer = new RTCSessionDescription(data.answer);
+                    peerConnection.setRemoteDescription(answer);
+                    waitingMsg.classList.add('hidden');
+                }
+
+                if (data.status === 'ended') {
+                    endCallSession();
+                }
+            });
+
+            // Listen for Remote ICE Candidates
+            onChildAdded(ref(db, `calls/${callId}/calleeCandidates`), (snapshot) => {
+                const candidate = new RTCIceCandidate(snapshot.val());
+                peerConnection.addIceCandidate(candidate);
+            });
+        }
+
+        // --- RECEIVE CALL (RECEIVER SIDE) ---
+        function initializeCallListeners() {
+            // Listen for incoming call notifications
+            const myNotifyRef = ref(db, `notifications/${currentUser.uid}`);
+            onValue(myNotifyRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data && data.callSessionId) {
+                    // Show incoming call modal
+                    document.getElementById('callerIdDisplay').textContent = data.callerId;
+                    incomingModal.classList.remove('hidden');
+                    currentCallId = data.callSessionId;
+                } else {
+                    incomingModal.classList.add('hidden');
+                }
+            });
+        }
+
+        document.getElementById('answerBtn').addEventListener('click', async () => {
+            incomingModal.classList.add('hidden');
+            isCaller = false;
+            
+            await startLocalVideo();
+            const pc = await createPeerConnection(currentCallId);
+
+            // Get the Offer
+            const callRef = ref(db, `calls/${currentCallId}`);
+            const snapshot = await get(callRef);
+            const data = snapshot.val();
+
+            const offerDescription = data.offer;
+            await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
+
+            // Create Answer
+            const answerDescription = await pc.createAnswer();
+            await pc.setLocalDescription(answerDescription);
+
+            // Update DB with Answer
+            const answer = { type: answerDescription.type, sdp: answerDescription.sdp };
+            await set(child(callRef, 'answer'), answer);
+            await set(child(callRef, 'status'), 'connected');
+
+            // Listen for Caller ICE Candidates
+            onChildAdded(ref(db, `calls/${currentCallId}/callerCandidates`), (snapshot) => {
+                const candidate = new RTCIceCandidate(snapshot.val());
+                peerConnection.addIceCandidate(candidate);
+            });
+            
+            // Monitor if Caller ends the call
+            onValue(child(callRef, 'status'), (snapshot) => {
+                if(snapshot.val() === 'ended') {
+                    endCallSession();
+                }
+            });
+        });
+
+        document.getElementById('rejectBtn').addEventListener('click', () => {
+            incomingModal.classList.add('hidden');
+            // Remove notification
+            remove(ref(db, `notifications/${currentUser.uid}`));
+            // Signal rejection (optional)
+        });
+
+        // --- END CALL LOGIC ---
+        document.getElementById('hangupBtn').addEventListener('click', () => {
+            // Only update DB status to 'ended' if I am the one clicking hangup
+            if (currentCallId) {
+                set(ref(db, `calls/${currentCallId}/status`), 'ended');
+                // Clean up notification if I was the caller calling someone
+                 if(isCaller) {
+                     const targetId = document.getElementById('peerIdInput').value.trim();
+                     remove(ref(db, `notifications/${targetId}`));
+                 } else {
+                     remove(ref(db, `notifications/${currentUser.uid}`));
+                 }
+            }
+            endCallSession();
+        });
+
+        function endCallSession() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            
+            localVideo.srcObject = null;
+            remoteVideo.srcObject = null;
+            
+            // Reset UI
+            callControls.classList.add('hidden');
+            dashboard.classList.remove('translate-y-full');
+            waitingMsg.classList.add('hidden');
+            incomingModal.classList.add('hidden');
+            currentCallId = null;
+        }
+
+        // Helpers
+        function generateCallId(uid1, uid2) {
+            // Create a consistent ID regardless of who calls whom (alphabetical sort)
+            // But for this logic, we use unique session based on caller pushing
+            return uid1 < uid2 ? uid1 + uid2 : uid2 + uid1;
+        }
+        
+        // Media Controls
+        document.getElementById('toggleMic').addEventListener('click', (e) => {
+            const audioTrack = localStream.getAudioTracks()[0];
+            audioTrack.enabled = !audioTrack.enabled;
+            e.currentTarget.classList.toggle('bg-red-500');
+            e.currentTarget.innerHTML = audioTrack.enabled ? '<i class="fas fa-microphone"></i>' : '<i class="fas fa-microphone-slash"></i>';
+        });
+
+        document.getElementById('toggleCam').addEventListener('click', (e) => {
+            const videoTrack = localStream.getVideoTracks()[0];
+            videoTrack.enabled = !videoTrack.enabled;
+            e.currentTarget.classList.toggle('bg-red-500');
+            e.currentTarget.innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash"></i>';
+        });
+
     </script>
 </body>
 </html>
