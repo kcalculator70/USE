@@ -3,40 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure User App</title>
+    <title>User App (Low Res)</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
     <style>
-        body { background: #111; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
-        input { padding: 12px; margin: 8px; width: 80%; border-radius: 5px; border: none; background: #222; color: white; }
-        button { padding: 12px 25px; margin: 10px; cursor: pointer; background: #00ffcc; border: none; font-weight: bold; border-radius: 5px; font-size: 16px; }
-        button:hover { background: #00ccaa; }
-        
-        #cameraSection { display: none; } 
+        body { background: #000; color: #0f0; font-family: monospace; text-align: center; padding: 20px; }
+        video { width: 60%; border: 2px solid #0f0; border-radius: 10px; transform: scaleX(-1); margin-top: 20px; }
+        .btn { padding: 10px 20px; background: #0f0; border: none; font-weight: bold; margin: 10px; cursor: pointer; }
         #authSection { margin-top: 50px; }
-        
-        video { width: 90%; border: 3px solid #00ffcc; border-radius: 10px; transform: scaleX(-1); margin-top: 20px; box-shadow: 0 0 20px rgba(0, 255, 204, 0.3); }
-        .status { color: #00ffcc; margin-top: 15px; font-weight: bold; }
+        #cameraSection { display: none; }
     </style>
 </head>
 <body>
 
     <div id="authSection">
-        <h2 style="color: #00ffcc;">🔐 Secure Login</h2>
-        <input type="email" id="email" placeholder="Email Address"><br>
-        <input type="password" id="password" placeholder="Password"><br>
-        <button onclick="loginUser()">Login</button>
-        <button onclick="registerUser()" style="background: #444;">Register</button>
-        <p id="authMsg" style="color: red; margin-top: 10px;"></p>
+        <h2>🔐 Login</h2>
+        <input type="email" id="email" placeholder="Email" style="padding: 10px;"><br><br>
+        <input type="password" id="password" placeholder="Password" style="padding: 10px;"><br><br>
+        <button class="btn" onclick="loginUser()">LOGIN</button>
+        <button class="btn" onclick="registerUser()" style="background: #555; color: white;">REGISTER</button>
+        <p id="msg" style="color: red;"></p>
     </div>
 
     <div id="cameraSection">
-        <h3>User: <span id="userIdDisplay" style="color: #00ffcc;">...</span></h3>
+        <h3>USER: <span id="uid">...</span></h3>
         <video id="localVideo" autoplay playsinline muted></video>
-        <div class="status" id="statusText">🟢 System Active</div>
-        <button onclick="logout()" style="background: red; color: white; margin-top: 20px;">Logout</button>
+        <p id="status">🟢 System Ready</p>
     </div>
 
     <script>
@@ -52,77 +46,52 @@
           measurementId: "G-WSJDCYKM3F"
         };
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
+        let currentPeer = null;
 
-        let currentPeer = null; // 🔥 গ্লোবাল ভেরিয়েবল (এটাই ফিক্স)
-
-        // --- AUTH FUNCTIONS ---
         function registerUser() {
-            const email = document.getElementById("email").value;
-            const pass = document.getElementById("password").value;
-            auth.createUserWithEmailAndPassword(email, pass)
-                .then(() => alert("Account Created! Login now."))
-                .catch((e) => document.getElementById("authMsg").innerText = e.message);
+            auth.createUserWithEmailAndPassword(document.getElementById("email").value, document.getElementById("password").value)
+                .then(() => alert("Created! Login now."))
+                .catch(e => document.getElementById("msg").innerText = e.message);
         }
 
         function loginUser() {
-            const email = document.getElementById("email").value;
-            const pass = document.getElementById("password").value;
-            auth.signInWithEmailAndPassword(email, pass)
-                .catch((e) => document.getElementById("authMsg").innerText = e.message);
+            auth.signInWithEmailAndPassword(document.getElementById("email").value, document.getElementById("password").value)
+                .catch(e => document.getElementById("msg").innerText = e.message);
         }
 
-        function logout() {
-            auth.signOut().then(() => location.reload());
-        }
-
-        // --- MAIN LOGIC ---
-        auth.onAuthStateChanged((user) => {
+        auth.onAuthStateChanged(user => {
             if (user) {
                 document.getElementById("authSection").style.display = "none";
                 document.getElementById("cameraSection").style.display = "block";
-                document.getElementById("userIdDisplay").innerText = user.email.split('@')[0];
-                startCameraSystem(user.uid, user.email);
+                document.getElementById("uid").innerText = user.email.split('@')[0];
+                startCamera(user.uid, user.email);
             }
         });
 
-        function startCameraSystem(uid, email) {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true })
-            .then(stream => {
+        function startCamera(uid, email) {
+            // 🔥 ভিডিও কোয়ালিটি কমানো হয়েছে (320px) যাতে দ্রুত লোড হয়
+            navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "user", width: 320, height: 240, frameRate: 15 }, 
+                audio: true 
+            }).then(stream => {
                 document.getElementById("localVideo").srcObject = stream;
                 
-                // ১. স্ট্যাটাস আপডেট
-                db.ref("users/" + uid).update({
-                    email: email,
-                    status: "online",
-                    lastSeen: Date.now()
-                });
-
-                // ২. ডিসকানেক্ট হলে
+                db.ref("users/" + uid).update({ email: email, status: "online" });
                 db.ref("users/" + uid).onDisconnect().update({ status: "offline" });
 
-                // ৩. সিগন্যাল লিসেনার (🔥🔥 The Fixed Logic)
                 db.ref("users/" + uid + "/offer").on("value", snapshot => {
                     const offer = snapshot.val();
-                    
                     if (offer) {
-                        document.getElementById("statusText").innerText = "⚠️ Admin Connecting...";
-                        
-                        // যদি আগে কোনো পিয়ার থাকে, সেটাকে মেরে ফেলো
-                        if (currentPeer) {
-                            currentPeer.destroy();
-                        }
+                        document.getElementById("status").innerText = "⚠️ Admin Connecting...";
+                        if (currentPeer) currentPeer.destroy();
 
-                        // নতুন পিয়ার তৈরি
                         currentPeer = new SimplePeer({ 
                             initiator: false, 
                             trickle: false, 
-                            stream: stream,
-                            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } 
+                            stream: stream 
                         });
 
                         currentPeer.signal(offer);
@@ -132,17 +101,11 @@
                         });
 
                         currentPeer.on('connect', () => {
-                             document.getElementById("statusText").innerText = "🔴 LIVE WITH ADMIN";
-                        });
-                        
-                        currentPeer.on('error', err => {
-                             console.log("Peer Error:", err);
-                             // এরর হলে পেজ রিফ্রেশ না করে রিসেট করা ভালো
+                             document.getElementById("status").innerText = "🔴 LIVE WITH ADMIN";
                         });
                     }
                 });
-            })
-            .catch(err => alert("Camera Error: " + err));
+            }).catch(e => alert("Camera Error: " + e));
         }
     </script>
 </body>
