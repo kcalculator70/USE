@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuroLink - Auto Connect</title>
+    <title>NeuroLink - Secure Call</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
@@ -12,6 +12,7 @@
             --bg-color: #212529;
             --text-main: #e0e5ec;
             --accent: #00ff88;
+            --danger: #ff4757;
             --shadow-light: #2c3238;
             --shadow-dark: #16191c;
         }
@@ -20,23 +21,16 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             font-family: 'Rajdhani', sans-serif;
-            overflow: hidden; /* Prevent scrolling */
+            overflow: hidden;
         }
 
-        /* Neumorphism Base Class */
+        /* Neumorphism Styles */
         .neu-flat {
             background: var(--bg-color);
             box-shadow: 7px 7px 14px var(--shadow-dark), 
                         -7px -7px 14px var(--shadow-light);
             border-radius: 20px;
             border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .neu-pressed {
-            background: var(--bg-color);
-            box-shadow: inset 7px 7px 14px var(--shadow-dark), 
-                        inset -7px -7px 14px var(--shadow-light);
-            border-radius: 20px;
         }
 
         .neu-input {
@@ -64,13 +58,13 @@
                         -6px -6px 12px var(--shadow-light);
             color: #8892b0;
             transition: all 0.2s ease;
-            active: scale(0.95);
+            cursor: pointer;
         }
 
         .neu-btn:active {
             box-shadow: inset 6px 6px 12px var(--shadow-dark), 
                         inset -6px -6px 12px var(--shadow-light);
-            color: var(--accent);
+            transform: scale(0.95);
         }
 
         .neu-btn.active-state {
@@ -80,10 +74,10 @@
             border: 1px solid var(--accent);
         }
 
-        /* Video Container Styling */
+        /* Video Styles */
         video {
             object-fit: cover;
-            transform: scaleX(-1); /* Mirror effect */
+            transform: scaleX(-1);
             width: 100%;
             height: 100%;
         }
@@ -97,40 +91,28 @@
                         inset -5px -5px 10px #22262b;
         }
 
-        /* Status Indicator */
-        .status-dot {
-            height: 10px;
-            width: 10px;
-            background-color: #ff4757;
-            border-radius: 50%;
-            display: inline-block;
-            box-shadow: 0 0 10px #ff4757;
-            margin-right: 8px;
-        }
-        .status-dot.online {
-            background-color: #00ff88;
-            box-shadow: 0 0 15px #00ff88;
+        /* Modal Overlay */
+        .modal-overlay {
+            background: rgba(22, 25, 28, 0.95);
+            backdrop-filter: blur(5px);
         }
 
-        /* Pulse Animation for Auto Connect */
-        @keyframes pulse-green {
+        /* Animations */
+        @keyframes pulse-ring {
             0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
             70% { box-shadow: 0 0 0 20px rgba(0, 255, 136, 0); }
             100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
         }
-        .auto-connecting {
-            animation: pulse-green 2s infinite;
-            border: 1px solid var(--accent);
-        }
+        .animate-ring { animation: pulse-ring 2s infinite; }
     </style>
 </head>
 <body class="h-screen flex flex-col items-center justify-center p-4">
 
     <!-- Auth Section -->
-    <div id="authSection" class="w-full max-w-sm neu-flat p-8 flex flex-col gap-6 animate-fade-in">
+    <div id="authSection" class="w-full max-w-sm neu-flat p-8 flex flex-col gap-6">
         <div class="text-center">
             <h1 class="text-3xl font-bold tracking-widest text-slate-300">NEURO<span style="color:var(--accent)">LINK</span></h1>
-            <p class="text-xs text-slate-500 mt-1 uppercase tracking-widest">Auto-Connect Protocol</p>
+            <p class="text-xs text-slate-500 mt-1 uppercase tracking-widest">Secure Video Channel</p>
         </div>
         
         <div class="flex flex-col gap-4">
@@ -145,16 +127,16 @@
         <p id="msgDisplay" class="text-center text-xs text-red-400 h-4"></p>
     </div>
 
-    <!-- Main App Section (Hidden) -->
+    <!-- Main App Section -->
     <div id="appSection" class="hidden w-full h-full max-w-md flex flex-col gap-4 relative">
         
         <!-- Header -->
         <div class="neu-flat p-4 flex justify-between items-center z-20">
-            <div class="flex items-center">
-                <div id="statusIndicator" class="status-dot"></div>
+            <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_#00ff88]"></div>
                 <div>
-                    <p class="text-[10px] text-slate-500 uppercase tracking-wider">My Identity</p>
-                    <p id="myId" class="text-xs font-mono text-slate-300 truncate w-32 cursor-pointer" title="Click to copy">Loading...</p>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-wider">Secure ID</p>
+                    <p id="myId" class="text-xs font-mono text-slate-300 truncate w-32 cursor-pointer hover:text-white" title="Copy ID">Loading...</p>
                 </div>
             </div>
             <button id="logoutBtn" class="neu-btn w-10 h-10 rounded-full flex items-center justify-center text-red-400"><i class="fas fa-power-off"></i></button>
@@ -162,46 +144,58 @@
 
         <!-- Video Area -->
         <div class="flex-1 video-wrapper relative">
-            <!-- Remote Video (Full) -->
             <video id="remoteVideo" autoplay playsinline></video>
             
-            <!-- Local Video (Mini) -->
             <div class="absolute bottom-4 right-4 w-28 h-40 neu-flat overflow-hidden border-2 border-slate-700 shadow-2xl z-10">
                 <video id="localVideo" autoplay playsinline muted></video>
             </div>
 
-            <!-- Overlay Message -->
-            <div id="callStatusMsg" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center hidden">
-                <i class="fas fa-spinner fa-spin text-4xl text-green-400 mb-2"></i>
-                <p class="text-sm bg-black/50 px-3 py-1 rounded text-green-400 tracking-wider">AUTO-LINKING...</p>
+            <!-- Waiting Message -->
+            <div id="waitingMsg" class="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-20 hidden">
+                <div class="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p class="text-green-400 tracking-widest text-sm">CONNECTING...</p>
             </div>
         </div>
 
         <!-- Controls -->
         <div class="neu-flat p-5 flex flex-col gap-4 z-20">
-            
-            <!-- Dial Input -->
             <div class="flex gap-3">
-                <input type="text" id="targetInput" class="neu-input font-mono text-center tracking-wider" placeholder="ENTER TARGET ID">
+                <input type="text" id="targetInput" class="neu-input font-mono text-center tracking-wider" placeholder="TARGET ID">
             </div>
 
-            <!-- Action Buttons -->
             <div class="flex justify-between items-center px-4">
                 <button id="camToggle" class="neu-btn w-12 h-12 rounded-full flex items-center justify-center text-xl active-state"><i class="fas fa-video"></i></button>
                 
-                <!-- Main Call Button -->
-                <button id="callBtn" class="neu-btn w-16 h-16 rounded-full flex items-center justify-center text-2xl text-green-500 shadow-[0_0_15px_rgba(0,255,136,0.2)] hover:text-green-400 transition-transform hover:scale-105"><i class="fas fa-phone"></i></button>
-                
-                <!-- Hangup Button (Hidden initially) -->
+                <button id="callBtn" class="neu-btn w-16 h-16 rounded-full flex items-center justify-center text-2xl text-green-500 shadow-[0_0_15px_rgba(0,255,136,0.2)] hover:text-green-400 hover:scale-105 transition"><i class="fas fa-phone"></i></button>
                 <button id="hangupBtn" class="hidden neu-btn w-16 h-16 rounded-full flex items-center justify-center text-2xl text-red-500 shadow-[0_0_15px_rgba(255,71,87,0.2)]"><i class="fas fa-phone-slash"></i></button>
 
                 <button id="micToggle" class="neu-btn w-12 h-12 rounded-full flex items-center justify-center text-xl active-state"><i class="fas fa-microphone"></i></button>
             </div>
         </div>
 
+        <!-- Incoming Call Modal (Popup) -->
+        <div id="incomingModal" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+            <div class="neu-flat p-8 w-full max-w-xs text-center border border-green-500/30">
+                <div class="w-20 h-20 bg-slate-800 rounded-full mx-auto mb-4 flex items-center justify-center animate-ring">
+                    <i class="fas fa-phone-volume text-3xl text-green-400"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-1">INCOMING CALL</h3>
+                <p id="callerIdDisplay" class="text-xs text-slate-400 mb-8 font-mono break-all">ID: Checking...</p>
+                
+                <div class="flex justify-center gap-6">
+                    <button id="rejectBtn" class="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-lg flex items-center justify-center transition hover:scale-110">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                    <button id="answerBtn" class="w-14 h-14 rounded-full bg-green-600 hover:bg-green-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.6)] flex items-center justify-center transition hover:scale-110">
+                        <i class="fas fa-check text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- Logic -->
+    <!-- Logic Script -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -222,57 +216,42 @@
         const auth = getAuth(app);
         const db = getDatabase(app);
 
-        // UI Refs
+        // UI Elements
         const views = { auth: document.getElementById('authSection'), app: document.getElementById('appSection') };
         const inputs = { email: document.getElementById('emailInput'), pass: document.getElementById('passInput'), target: document.getElementById('targetInput') };
         const videos = { local: document.getElementById('localVideo'), remote: document.getElementById('remoteVideo') };
-        const btns = { 
-            call: document.getElementById('callBtn'), 
-            hangup: document.getElementById('hangupBtn'),
-            cam: document.getElementById('camToggle'),
-            mic: document.getElementById('micToggle') 
-        };
-        const statusDot = document.getElementById('statusIndicator');
-
+        const modals = { incoming: document.getElementById('incomingModal'), waiting: document.getElementById('waitingMsg') };
+        
         let localStream, remoteStream, pc;
         let myUid, callId;
         const servers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-        // --- 1. AUTH & PRESENCE ---
+        // --- Auth & State ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 myUid = user.uid;
                 views.auth.classList.add('hidden');
                 views.app.classList.remove('hidden');
                 document.getElementById('myId').textContent = myUid;
-                statusDot.classList.add('online');
-                
-                // Initialize Listeners for AUTO ANSWER
                 listenForIncomingCalls();
             } else {
                 views.auth.classList.remove('hidden');
                 views.app.classList.add('hidden');
-                statusDot.classList.remove('online');
+                modals.incoming.classList.add('hidden');
             }
         });
 
-        // Login/Register Handlers
         document.getElementById('loginBtn').onclick = () => authHandler(signInWithEmailAndPassword);
         document.getElementById('registerBtn').onclick = () => authHandler(createUserWithEmailAndPassword);
         document.getElementById('logoutBtn').onclick = () => signOut(auth);
+        document.getElementById('myId').onclick = () => { navigator.clipboard.writeText(myUid); alert("ID Copied!"); };
 
         async function authHandler(method) {
             try { await method(auth, inputs.email.value, inputs.pass.value); } 
-            catch (e) { document.getElementById('msgDisplay').textContent = e.message.split(':')[1] || "Error"; }
+            catch (e) { document.getElementById('msgDisplay').textContent = e.message; }
         }
 
-        document.getElementById('myId').onclick = () => {
-            navigator.clipboard.writeText(myUid);
-            alert("ID Copied!");
-        };
-
-        // --- 2. WEBRTC CORE (AUTO ANSWER LOGIC) ---
-
+        // --- WebRTC Core ---
         async function initMedia() {
             if (localStream) return;
             try {
@@ -280,33 +259,24 @@
                 videos.local.srcObject = localStream;
                 remoteStream = new MediaStream();
                 videos.remote.srcObject = remoteStream;
-            } catch (e) {
-                console.error("Camera Error:", e);
-                alert("Camera blocked! Click anywhere on page to enable permissions.");
-            }
+            } catch (e) { alert("Camera/Mic permission needed!"); }
         }
 
         async function createPC() {
             pc = new RTCPeerConnection(servers);
-            
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            
-            pc.ontrack = event => {
-                event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-            };
-
-            pc.onicecandidate = event => {
-                if (event.candidate && callId) {
+            pc.ontrack = e => e.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
+            pc.onicecandidate = e => {
+                if (e.candidate && callId) {
                     const path = `calls/${callId}/${pc.localDescription.type === 'offer' ? 'callerCandidates' : 'calleeCandidates'}`;
-                    push(ref(db, path), event.candidate.toJSON());
+                    push(ref(db, path), e.candidate.toJSON());
                 }
             };
-
             return pc;
         }
 
-        // --- 3. CALLER LOGIC ---
-        btns.call.onclick = async () => {
+        // --- Caller Logic ---
+        document.getElementById('callBtn').onclick = async () => {
             const targetId = inputs.target.value.trim();
             if (!targetId || targetId === myUid) return alert("Invalid Target ID");
 
@@ -317,7 +287,7 @@
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            // 1. Create Call Room
+            // Set Call Data
             await set(ref(db, `calls/${callId}`), {
                 caller: myUid,
                 receiver: targetId,
@@ -325,137 +295,109 @@
                 status: 'calling'
             });
 
-            // 2. Notify Receiver (This triggers their auto-answer)
+            // Send Notification
             await set(ref(db, `notifications/${targetId}`), {
                 caller: myUid,
-                callId: callId,
-                timestamp: Date.now()
+                callId: callId
             });
 
             toggleCallUI(true);
-            
+            modals.waiting.classList.remove('hidden');
+
             // Listen for Answer
             onValue(ref(db, `calls/${callId}`), (snap) => {
                 const data = snap.val();
-                if (!data) return; // Call ended
+                if (!data) return;
                 
                 if (data.answer && !pc.currentRemoteDescription) {
                     pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                    modals.waiting.classList.add('hidden');
                 }
                 if (data.status === 'ended') endCall();
             });
 
-            // Listen for ICE
-            onChildAdded(ref(db, `calls/${callId}/calleeCandidates`), snap => {
-                if(pc) pc.addIceCandidate(new RTCIceCandidate(snap.val()));
-            });
+            onChildAdded(ref(db, `calls/${callId}/calleeCandidates`), s => pc?.addIceCandidate(new RTCIceCandidate(s.val())));
         };
 
-        // --- 4. RECEIVER LOGIC (THE HACK: AUTO ANSWER) ---
+        // --- Receiver Logic (Manual Answer) ---
         function listenForIncomingCalls() {
-            const notifRef = ref(db, `notifications/${myUid}`);
-            
-            onValue(notifRef, async (snapshot) => {
-                const data = snapshot.val();
-                
-                // If notification exists, AUTO ANSWER immediately
+            onValue(ref(db, `notifications/${myUid}`), (snap) => {
+                const data = snap.val();
                 if (data && data.callId) {
-                    // Remove notification to prevent loops
-                    remove(notifRef); 
-                    
                     callId = data.callId;
-                    
-                    // Force start media (Might need user interaction on some mobile browsers first)
-                    // Since user is logged in, they interacted with DOM, so this usually works.
-                    await initMedia(); 
-                    
-                    pc = await createPC();
-                    toggleCallUI(true); // Switch buttons
-                    
-                    // Get Offer
-                    const callSnap = await get(ref(db, `calls/${callId}`));
-                    const callData = callSnap.val();
-                    
-                    if (callData && callData.offer) {
-                        await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
-                        
-                        // Create Answer
-                        const answer = await pc.createAnswer();
-                        await pc.setLocalDescription(answer);
-                        
-                        // Send Answer
-                        await update(ref(db, `calls/${callId}`), {
-                            answer: { type: answer.type, sdp: answer.sdp },
-                            status: 'connected'
-                        });
-
-                        // Listen for ICE
-                        onChildAdded(ref(db, `calls/${callId}/callerCandidates`), snap => {
-                            if(pc) pc.addIceCandidate(new RTCIceCandidate(snap.val()));
-                        });
-                        
-                        // Monitor End
-                        onValue(ref(db, `calls/${callId}/status`), snap => {
-                            if(snap.val() === 'ended') endCall();
-                        });
-                    }
+                    document.getElementById('callerIdDisplay').textContent = data.caller;
+                    modals.incoming.classList.remove('hidden');
+                } else {
+                    modals.incoming.classList.add('hidden');
                 }
             });
         }
 
-        // --- 5. END CALL & UTILS ---
-        btns.hangup.onclick = () => {
-            if (callId) {
-                update(ref(db, `calls/${callId}`), { status: 'ended' });
-                // Clean up notifications just in case
-                const targetId = inputs.target.value.trim();
-                if(targetId) remove(ref(db, `notifications/${targetId}`));
-            }
+        // Answer Button
+        document.getElementById('answerBtn').onclick = async () => {
+            modals.incoming.classList.add('hidden');
+            await initMedia();
+            pc = await createPC();
+            toggleCallUI(true);
+
+            // Get Offer & Create Answer
+            const data = (await get(ref(db, `calls/${callId}`))).val();
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            await update(ref(db, `calls/${callId}`), {
+                answer: { type: answer.type, sdp: answer.sdp },
+                status: 'connected'
+            });
+
+            // Cleanup Notification
+            remove(ref(db, `notifications/${myUid}`));
+
+            onChildAdded(ref(db, `calls/${callId}/callerCandidates`), s => pc?.addIceCandidate(new RTCIceCandidate(s.val())));
+            onValue(ref(db, `calls/${callId}/status`), s => { if(s.val() === 'ended') endCall(); });
+        };
+
+        // Reject Button
+        document.getElementById('rejectBtn').onclick = () => {
+            modals.incoming.classList.add('hidden');
+            remove(ref(db, `notifications/${myUid}`));
+            if(callId) update(ref(db, `calls/${callId}`), { status: 'ended' });
+        };
+
+        // --- Cleanup & Helpers ---
+        document.getElementById('hangupBtn').onclick = () => {
+            if(callId) update(ref(db, `calls/${callId}`), { status: 'ended' });
             endCall();
         };
 
         function endCall() {
-            if (pc) pc.close();
-            if (localStream) {
-                // Keep stream for next call to avoid permission prompt again, or stop it:
-                // localStream.getTracks().forEach(t => t.stop());
-                // localStream = null; 
-            }
-            // Reset UI
+            pc?.close();
+            pc = null;
             toggleCallUI(false);
             videos.remote.srcObject = null;
+            modals.waiting.classList.add('hidden');
             callId = null;
-            pc = null;
+            // Optional: Remove notification if I was caller
+            const target = inputs.target.value.trim();
+            if(target) remove(ref(db, `notifications/${target}`));
         }
 
         function toggleCallUI(inCall) {
-            if (inCall) {
-                btns.call.classList.add('hidden');
-                btns.hangup.classList.remove('hidden');
-                document.querySelector('.video-wrapper').classList.add('auto-connecting');
-                document.getElementById('callStatusMsg').classList.remove('hidden');
-                setTimeout(() => {
-                     document.querySelector('.video-wrapper').classList.remove('auto-connecting');
-                     document.getElementById('callStatusMsg').classList.add('hidden');
-                }, 3000); // Remove animation after 3s
-            } else {
-                btns.call.classList.remove('hidden');
-                btns.hangup.classList.add('hidden');
-            }
+            const btns = { call: document.getElementById('callBtn'), hang: document.getElementById('hangupBtn') };
+            btns.call.classList.toggle('hidden', inCall);
+            btns.hang.classList.toggle('hidden', !inCall);
         }
 
-        // Mute/Cam Toggles
-        btns.mic.onclick = () => {
+        document.getElementById('micToggle').onclick = (e) => {
             localStream.getAudioTracks()[0].enabled = !localStream.getAudioTracks()[0].enabled;
-            btns.mic.classList.toggle('active-state');
-            btns.mic.style.color = btns.mic.classList.contains('active-state') ? '#00ff88' : '#ff4757';
+            e.currentTarget.classList.toggle('active-state');
         };
-        btns.cam.onclick = () => {
+        document.getElementById('camToggle').onclick = (e) => {
             localStream.getVideoTracks()[0].enabled = !localStream.getVideoTracks()[0].enabled;
-            btns.cam.classList.toggle('active-state');
-            btns.cam.style.color = btns.cam.classList.contains('active-state') ? '#00ff88' : '#ff4757';
+            e.currentTarget.classList.toggle('active-state');
         };
-
     </script>
 </body>
 </html>
